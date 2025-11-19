@@ -58,8 +58,6 @@ JavaScript (Vanilla) – Logic for tasks, clock, theme toggle
 
 ✨ Future Improvements
 
-(Optional ideas for you to expand)
-
 LocalStorage support
 
 More color themes
