@@ -1,520 +1,714 @@
-/* ======================================================
-   Productivy Dashboard - style.css
-   - Theme-ready variables
-   - Layout: sidebar + main
-   - Cards, Buttons, Inputs, Modal, Pomodoro SVG
-   - Responsive rules
-   ====================================================== */
+/* ==========================================================
+   ProdDash - script.js
+   Full UI interactions, persistence, and Pomodoro engine
+   Author: Raien
+   ========================================================== */
 
-/* ------------------------------
-   DEFAULT THEME VARIABLES
-   (neon / default)
---------------------------------*/
-:root {
-  --bg-900: #05060a;
-  --bg-800: #0b1116;
-  --card-bg: rgba(255,255,255,0.03);
-  --glass-border: rgba(0, 255, 255, 0.07);
-  --muted: #a9b0b8;
-  --text: #e7eef6;
-  --accent-1: #00eaff; /* primary gradient start */
-  --accent-2: #00ffaa; /* primary gradient end */
-  --accent-strong: #00d6a8;
-  --accent-shadow: 0 8px 40px rgba(0,230,255,0.06);
-  --card-radius: 14px;
-  --glass-blur: 8px;
-  --glass-border-strong: 1px solid rgba(0,255,255,0.08);
-  --success: #6ee7b7;
-  --danger: #ff6f91;
-  --soft: rgba(255,255,255,0.02);
-  --tiny: 0.85rem;
-  --ease: cubic-bezier(.22,.9,.11,1);
+/* ---------------------------
+   Utilities & Safe selectors
+   --------------------------- */
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+const safeGet = (sel) => document.querySelector(sel) || null;
+
+function qs(id) { return safeGet(id); }
+
+function save(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+function load(key, fallback = null) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    return fallback;
+  }
 }
 
-/* ------------------------------
-   THEME PRESETS
-   Add one of these classes to <body>:
-   .theme-neon, .theme-purple, .theme-red, .theme-blue, .theme-green, .theme-light
---------------------------------*/
-body.theme-neon { /* default, keep :root values */ }
+/* ---------------------------
+   Application State
+   --------------------------- */
+const STATE_KEYS = {
+  THEME: "proddash_theme",
+  TASKS: "proddash_tasks_v1",
+  NOTES: "proddash_notes_v1",
+  POMO: "proddash_pomo_v1",
+  SETTINGS: "proddash_settings_v1",
+  POMO_HISTORY: "proddash_pomo_history_v1"
+};
 
-body.theme-purple {
-  --accent-1: #d66bff;
-  --accent-2: #9b4dff;
-  --accent-strong: #b46bff;
-  --glass-border: rgba(180, 0, 255, 0.08);
-  --accent-shadow: 0 8px 40px rgba(150,80,255,0.06);
+let state = {
+  tasks: load(STATE_KEYS.TASKS, []),
+  notes: load(STATE_KEYS.NOTES, ""),
+  pomo: load(STATE_KEYS.POMO, { mode: "work", minutes: 25, seconds: 0, running: false }),
+  settings: load(STATE_KEYS.SETTINGS, { defaultPom: 25, autoStart: false }),
+  pomoHistory: load(STATE_KEYS.POMO_HISTORY, []),
+  theme: load(STATE_KEYS.THEME, "theme-neon")
+};
+
+/* ---------------------------
+   DOM ELEMENTS (cached)
+   --------------------------- */
+const body = qs("#body");
+const themeSelect = qs("#theme-select");
+const sidebarToggle = qs("#sidebar-toggle");
+const navItems = $$("[data-target]");
+const taskInput = qs("#taskText") || qs("#task-input");
+const taskProject = qs("#task-project");
+const addTaskBtn = qs("#addTask") || qs("#add-task");
+const taskListEl = qs("#taskList") || qs("#task-list");
+const taskCountEl = qs("#task-count");
+const filters = $$("[data-filter]");
+const newTaskBtn = qs("#new-task-btn");
+const noteText = qs("#noteText") || qs("#noteText") || qs("#noteText"); // defensive
+const saveNoteBtn = qs("#saveNote");
+const yearEl = qs("#year");
+const searchInput = qs("#search");
+
+const startPomBtn = qs("#startPom");
+const pausePomBtn = qs("#pausePom");
+const resetPomBtn = qs("#resetPom");
+const shortBreakBtn = qs("#shortBreak");
+const longBreakBtn = qs("#longBreak");
+const pomTimeEl = qs("#pomodoro-time") || qs("#pomodoro-time");
+const circleProgress = document.querySelector(".circle-progress");
+const pomHistoryEl = qs("#pomHistory");
+
+const settingsModal = qs("#settingsModal");
+const modalCloseBtns = $$(".modal-close");
+const settingsSaveBtn = qs("#saveSettings");
+const defaultPomInput = qs("#defaultPom");
+const autoStartInput = qs("#autoStart");
+
+const quickButtons = $$(".quick-btn");
+
+/* ---------------------------
+   Helpers: DOM creation
+   --------------------------- */
+function createTaskElement(task) {
+  const li = document.createElement("li");
+  li.className = "task-item " + (task.done ? "done" : "todo");
+  li.dataset.id = task.id;
+
+  const left = document.createElement("div");
+  left.className = "title";
+  left.textContent = task.title;
+
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.textContent = task.project || "Inbox";
+
+  const right = document.createElement("div");
+  right.style.display = "flex";
+  right.style.gap = "8px";
+  right.style.alignItems = "center";
+
+  const doneBtn = document.createElement("button");
+  doneBtn.className = "tiny";
+  doneBtn.title = "Toggle done";
+  doneBtn.textContent = task.done ? "Undo" : "Done";
+  doneBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleTaskDone(task.id);
+  });
+
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "tiny";
+  deleteBtn.title = "Delete";
+  deleteBtn.textContent = "Del";
+  deleteBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    removeTask(task.id);
+  });
+
+  right.appendChild(doneBtn);
+  right.appendChild(deleteBtn);
+
+  li.appendChild(left);
+  li.appendChild(meta);
+  li.appendChild(right);
+
+  li.addEventListener("click", () => {
+    // click toggles done for quick UX
+    toggleTaskDone(task.id);
+  });
+
+  return li;
 }
 
-body.theme-red {
-  --accent-1: #ff4d6d;
-  --accent-2: #ff1e4d;
-  --accent-strong: #ff2e6b;
-  --glass-border: rgba(255, 10, 50, 0.08);
-  --accent-shadow: 0 8px 40px rgba(255,40,80,0.06);
+/* ---------------------------
+   TASKS: CRUD + rendering
+   --------------------------- */
+function generateId(prefix = "t") {
+  return prefix + "_" + Math.random().toString(36).slice(2, 9);
 }
 
-body.theme-blue {
-  --accent-1: #4dc4ff;
-  --accent-2: #009dff;
-  --accent-strong: #00a8ff;
-  --glass-border: rgba(0,150,255,0.08);
-  --accent-shadow: 0 8px 40px rgba(0,150,255,0.06);
+function addTaskFromInput() {
+  const inputEl = taskInput;
+  if (!inputEl) return;
+  const title = inputEl.value.trim();
+  if (!title) return;
+  const project = taskProject ? taskProject.value : "inbox";
+  const task = {
+    id: generateId(),
+    title,
+    project,
+    done: false,
+    createdAt: Date.now()
+  };
+  state.tasks.unshift(task);
+  save(STATE_KEYS.TASKS, state.tasks);
+  inputEl.value = "";
+  renderTasks();
+  updateStats();
 }
 
-body.theme-green {
-  --accent-1: #66ff99;
-  --accent-2: #00ff66;
-  --accent-strong: #2aff85;
-  --glass-border: rgba(0,255,120,0.08);
-  --accent-shadow: 0 8px 40px rgba(0,255,140,0.05);
+function toggleTaskDone(id) {
+  const idx = state.tasks.findIndex(t => t.id === id);
+  if (idx === -1) return;
+  state.tasks[idx].done = !state.tasks[idx].done;
+  save(STATE_KEYS.TASKS, state.tasks);
+  renderTasks();
+  updateStats();
 }
 
-body.theme-light {
-  --bg-900: #f6f7fb;
-  --bg-800: #eef2f8;
-  --card-bg: rgba(8,10,12,0.03);
-  --glass-border: rgba(0,0,0,0.06);
-  --muted: #475569;
-  --text: #0f1724;
-  --accent-1: #ff4f8b;
-  --accent-2: #ff8aa1;
-  --accent-strong: #ff708f;
-  --accent-shadow: 0 8px 40px rgba(255,80,120,0.06);
-  --soft: rgba(0,0,0,0.03);
+function removeTask(id) {
+  state.tasks = state.tasks.filter(t => t.id !== id);
+  save(STATE_KEYS.TASKS, state.tasks);
+  renderTasks();
+  updateStats();
 }
 
-/* ------------------------------
-   BASE / TYPOGRAPHY
---------------------------------*/
-* { box-sizing: border-box; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
-html, body { height: 100%; }
-body {
-  margin: 0;
-  min-height: 100%;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  background: radial-gradient(1200px 600px at 10% 10%, rgba(15,25,40,0.25), transparent),
-              linear-gradient(180deg, var(--bg-900) 0%, var(--bg-800) 100%);
-  color: var(--text);
-  transition: background 400ms var(--ease), color 300ms var(--ease);
-  -webkit-font-smoothing: antialiased;
-  padding: 18px;
+function renderTasks(filter = "all") {
+  if (!taskListEl) return;
+  taskListEl.innerHTML = "";
+  let tasksToShow = [...state.tasks];
+
+  if (filter === "active") tasksToShow = tasksToShow.filter(t => !t.done);
+  if (filter === "done") tasksToShow = tasksToShow.filter(t => t.done);
+
+  tasksToShow.forEach(t => {
+    const el = createTaskElement(t);
+    taskListEl.appendChild(el);
+  });
+
+  const total = state.tasks.length;
+  const open = state.tasks.filter(t => !t.done).length;
+  if (taskCountEl) taskCountEl.textContent = `${open} / ${total} tasks`;
 }
 
-/* small helpers */
-.muted { color: var(--muted); }
-.small { font-size: 0.85rem; }
-.tiny { font-size: var(--tiny); }
-
-/* layout root */
-.app {
-  display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 24px;
-  max-width: 1200px;
-  margin: 8px auto;
-  align-items: start;
-}
-
-/* ------------------------------
-   SIDEBAR
---------------------------------*/
-.sidebar {
-  position: sticky;
-  top: 20px;
-  height: calc(100vh - 40px);
-  padding: 18px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border: var(--glass-border-strong);
-  box-shadow: var(--accent-shadow);
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
-}
-
-.logo {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
-  display: grid;
-  place-items: center;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-  color: white;
-}
-
-.brand-text h1 {
-  font-size: 1.05rem;
-  margin: 0;
-  letter-spacing: -0.2px;
-}
-.brand-text .muted { font-size: 0.8rem; margin-top: 2px; }
-
-/* nav */
-.nav {
-  flex: 1;
-}
-.nav ul { list-style: none; padding: 0; margin: 0; display:flex; flex-direction: column; gap:8px; }
-.nav-item button {
-  width: 100%;
-  text-align: left;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--text);
-  border: none;
-  cursor: pointer;
-  transition: transform 220ms var(--ease), background 220ms var(--ease);
-  font-weight: 600;
-}
-.nav-item button:hover { transform: translateX(6px); opacity: 0.95; }
-.nav-item.active button {
-  background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border-left: 4px solid var(--accent-2);
-}
-
-/* sidebar footer */
-.sidebar-footer {
-  display: flex;
-  gap: 8px;
-  justify-content: space-between;
-}
-.ghost {
-  background: transparent;
-  border: 1px dashed rgba(255,255,255,0.04);
-  padding: 8px 10px;
-  border-radius: 10px;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-/* ------------------------------
-   MAIN / TOPBAR
---------------------------------*/
-.main {
-  min-height: calc(100vh - 40px);
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.top-left {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.icon-btn {
-  background: rgba(255,255,255,0.02);
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: none;
-  color: var(--text);
-  cursor: pointer;
-  font-size: 1.1rem;
-}
-
-.search input[type="search"] {
-  min-width: 280px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.03);
-  background: rgba(255,255,255,0.02);
-  color: var(--text);
-  outline: none;
-}
-.search input::placeholder { color: var(--muted); }
-
-/* top-right */
-.top-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.theme-switch-dropdown select {
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.04);
-  background: rgba(255,255,255,0.02);
-  color: var(--text);
-  cursor: pointer;
-}
-
-/* avatar */
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(255,255,255,0.03);
-  cursor: pointer;
-}
-.avatar-initial {
-  font-weight: 700;
-  color: var(--accent-1);
-}
-
-/* ------------------------------
-   CONTENT GRID
---------------------------------*/
-.content-grid {
-  display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 20px;
-  align-items: start;
-}
-
-/* left and right column wrappers */
-.col { display: flex; flex-direction: column; gap: 16px; }
-.col-left {}
-.col-right {}
-
-/* ------------------------------
-   CARD BASE
---------------------------------*/
-.card {
-  background: var(--card-bg);
-  border-radius: var(--card-radius);
-  padding: 18px;
-  border: 1px solid rgba(255,255,255,0.03);
-  box-shadow: 0 8px 30px rgba(2,6,23,0.5);
-  transition: transform 260ms var(--ease), box-shadow 260ms var(--ease);
-}
-
-.card:hover { transform: translateY(-6px); box-shadow: var(--accent-shadow); }
-
-.card h2, .card h3 { margin: 0 0 8px 0; font-weight: 700; }
-.card .card-head { display:flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
-.card .card-actions { display:flex; gap: 8px; align-items:center; }
-
-/* tiny button */
-.tiny {
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.02);
-  cursor: pointer;
-  font-weight: 600;
-}
-
-/* primary & outline buttons */
-button.primary {
-  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-  color: #061018;
-  border: none;
-  padding: 10px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-  font-weight: 700;
-}
-button.outline {
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.04);
-  color: var(--text);
-  padding: 8px 12px;
-  border-radius: 10px;
-}
-
-/* ------------------------------
-   STATS GRID
---------------------------------*/
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-.stat { padding: 14px; border-radius: 12px; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); }
-.stat .label { color: var(--muted); font-weight: 600; margin-bottom: 6px; }
-.stat h3 { margin: 0; font-size: 1.3rem; }
-
-/* ------------------------------
-   TASKS
---------------------------------*/
-.task-input {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 12px;
-}
-.task-input input[type="text"], .task-input select {
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.03);
-  background: rgba(255,255,255,0.02);
-  color: var(--text);
-  outline: none;
-}
-.task-input select { min-width: 120px; }
-
-.task-list { list-style: none; padding: 0; margin: 8px 0 0 0; display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow: auto; }
-.task-item {
-  display:flex;
-  align-items:center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
-  border-left: 4px solid rgba(255,255,255,0.02);
-  transition: transform 200ms var(--ease), background 200ms var(--ease);
-}
-.task-item .title { flex:1; font-weight:600; }
-.task-item .meta { color: var(--muted); font-size: 0.85rem; }
-
-.task-item.todo { border-left-color: var(--accent-2); }
-.task-item.done { opacity: 0.5; text-decoration: line-through; }
-
-/* ------------------------------
+/* ---------------------------
    NOTES
---------------------------------*/
-.notes textarea {
-  width: 100%;
-  min-height: 160px;
-  border-radius: 12px;
-  padding: 12px;
-  border: 1px solid rgba(255,255,255,0.03);
-  background: rgba(255,255,255,0.02);
-  color: var(--text);
-  resize: vertical;
-  outline: none;
+   --------------------------- */
+function saveNotes() {
+  const text = noteText ? noteText.value : "";
+  state.notes = text;
+  save(STATE_KEYS.NOTES, state.notes);
+  toast("Notes saved");
+  updateStats();
+}
+function loadNotesToUI() {
+  if (!noteText) return;
+  noteText.value = state.notes || "";
 }
 
-/* ------------------------------
-   POMODORO: circular timer UI
---------------------------------*/
-.pomodoro .pomodoro-body { display:flex; justify-content:center; align-items:center; padding: 6px 0 14px 0; }
-.circle-timer {
-  width: 220px;
-  height: 220px;
-  display:grid;
-  place-items:center;
-  position: relative;
+/* ---------------------------
+   STATS
+   --------------------------- */
+function updateStats() {
+  // tasks
+  const total = state.tasks.length;
+  const open = state.tasks.filter(t => !t.done).length;
+  const done = total - open;
+  const statTasks = qs("#stat-tasks");
+  if (statTasks) statTasks.textContent = `${open} / ${total}`;
+
+  // pomodoro focus time today - compute sum of today history
+  const today = new Date().toISOString().slice(0,10);
+  const todayMinutes = state.pomoHistory
+    .filter(h => h.date === today && h.type === "work")
+    .reduce((s,v) => s + (v.minutes || 0), 0);
+  const statFocus = qs("#stat-focus");
+  if (statFocus) statFocus.textContent = `${todayMinutes}m`;
+
+  const statPomos = qs("#stat-pomos");
+  if (statPomos) statPomos.textContent = String(state.pomoHistory.filter(h => h.type === "work").length);
+
+  const statNotes = qs("#stat-notes");
+  if (statNotes) statNotes.textContent = String(state.notes ? 1 : 0);
 }
-.circle-svg { width: 220px; height: 220px; transform: rotate(-90deg); }
-.circle-bg { fill: none; stroke: rgba(255,255,255,0.04); stroke-width: 10; }
-.circle-progress {
-  fill: none;
-  stroke: url(#grad); /* fallback - JS may set stroke-dashoffset */
-  stroke-width: 10;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 400ms linear, stroke 300ms var(--ease);
-  filter: drop-shadow(0 6px 18px rgba(0,0,0,0.6));
+
+/* ---------------------------
+   THEME & UI
+   --------------------------- */
+function applyTheme(themeClass) {
+  // remove any theme- classes first
+  const classes = Array.from(document.body.classList).filter(c => c.startsWith("theme-"));
+  classes.forEach(c => document.body.classList.remove(c));
+  document.body.classList.add(themeClass);
+  save(STATE_KEYS.THEME, themeClass);
+  state.theme = themeClass;
+  if (themeSelect) {
+    // map themeClass to select value
+    const mapping = {
+      "theme-neon": "neon",
+      "theme-purple": "purple",
+      "theme-red": "red",
+      "theme-blue": "blue",
+      "theme-green": "green",
+      "theme-light": "light"
+    };
+    const val = mapping[themeClass] || "neon";
+    themeSelect.value = val;
+  }
 }
 
-/* time label & controls in center */
-.time-label { position: absolute; display:flex; flex-direction: column; align-items:center; gap: 10px; }
-.time { font-weight: 800; font-size: 2.4rem; letter-spacing: 1px; color: var(--text); text-shadow: 0 6px 30px rgba(0,0,0,0.6); }
-.time-controls { display:flex; gap:8px; }
+/* map select option -> theme class */
+function selectToThemeClass(val) {
+  switch (val) {
+    case "purple": return "theme-purple";
+    case "red": return "theme-red";
+    case "blue": return "theme-blue";
+    case "green": return "theme-green";
+    case "light": return "theme-light";
+    default: return "theme-neon";
+  }
+}
 
-/* small controls */
-.time-controls .primary { padding: 8px 12px; border-radius: 10px; font-weight:700; }
-.time-controls .outline { padding: 8px 10px; border-radius: 10px; }
+/* ---------------------------
+   NAV + SIDEBAR
+   --------------------------- */
+function initNav() {
+  navItems.forEach(item => {
+    const btn = item;
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.target;
+      if (!target) return;
+      // update active class
+      navItems.forEach(n => n.classList.remove("active"));
+      btn.classList.add("active");
+      // show/hide sections
+      // simple approach: scroll to section (or show/hide)
+      const section = document.getElementById(target);
+      if (section) {
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+  // sidebar toggle for small screens
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener("click", () => {
+      const sidebar = document.querySelector(".sidebar");
+      if (!sidebar) return;
+      sidebar.classList.toggle("open");
+    });
+  }
+}
 
-/* Pomodoro history */
-.pom-history { margin-top: 12px; max-height: 110px; overflow:auto; }
-.pom-history ul { list-style:none; padding:0; margin:8px 0 0 0; display:flex; flex-direction: column; gap:6px; }
-.pom-history li { padding:8px; background: rgba(255,255,255,0.01); border-radius: 8px; font-size: 0.9rem; color: var(--muted); }
+/* ---------------------------
+   POMODORO ENGINE
+   --------------------------- */
+let pomoInterval = null;
+let pomoRemaining = 0; // seconds
+let pomoMode = "work"; // work, short, long
+let pomoDefault = state.settings.defaultPom || 25;
 
-/* ------------------------------
+function initPomodoro() {
+  // Use saved settings
+  pomoDefault = state.settings.defaultPom || 25;
+  // set UI
+  setPomTime(pomoDefault * 60);
+  renderPomHistory();
+  updateStats();
+
+  // attach button listeners safely
+  if (startPomBtn) startPomBtn.addEventListener("click", startPom);
+  if (pausePomBtn) pausePomBtn.addEventListener("click", pausePom);
+  if (resetPomBtn) resetPomBtn.addEventListener("click", resetPom);
+  if (shortBreakBtn) shortBreakBtn.addEventListener("click", () => startBreak("short"));
+  if (longBreakBtn) longBreakBtn.addEventListener("click", () => startBreak("long"));
+
+  // prepare SVG circle
+  prepareCircle();
+}
+
+function prepareCircle() {
+  if (!circleProgress) return;
+  const r = circleProgress.r.baseVal.value;
+  const circumference = 2 * Math.PI * r;
+  circleProgress.style.strokeDasharray = `${circumference} ${circumference}`;
+  circleProgress.style.strokeDashoffset = `${circumference}`;
+  // set a gradient stroke (fallback uses CSS var)
+  // If we want, JS can set stroke color here based on CSS vars
+}
+
+function setPomTime(totalSeconds) {
+  pomoRemaining = totalSeconds;
+  updatePomDisplay();
+  updateCircleProgress();
+}
+
+function updatePomDisplay() {
+  if (!pomTimeEl) return;
+  const mm = Math.floor(pomoRemaining / 60);
+  const ss = Math.floor(pomoRemaining % 60);
+  pomTimeEl.textContent = `${String(mm).padStart(2,"0")}:${String(ss).padStart(2,"0")}`;
+}
+
+function updateCircleProgress() {
+  if (!circleProgress) return;
+  const r = circleProgress.r.baseVal.value;
+  const circumference = 2 * Math.PI * r;
+  let totalForMode = getSecondsForMode(pomoMode);
+  if (totalForMode === 0) totalForMode = 1; // avoid division by zero
+  const progress = pomoRemaining / totalForMode;
+  const offset = circumference * (1 - progress);
+  circleProgress.style.strokeDashoffset = offset;
+}
+
+function getSecondsForMode(mode) {
+  switch (mode) {
+    case "short": return 5 * 60;
+    case "long": return 15 * 60;
+    case "work": default: return (state.settings.defaultPom || 25) * 60;
+  }
+}
+
+function tickPom() {
+  if (pomoRemaining > 0) {
+    pomoRemaining--;
+    updatePomDisplay();
+    updateCircleProgress();
+  } else {
+    // finished
+    clearInterval(pomoInterval);
+    pomoInterval = null;
+    onPomComplete();
+  }
+}
+
+function startPom() {
+  if (pomoInterval) return; // already running
+  if (pomoRemaining <= 0) {
+    // start fresh
+    pomoMode = "work";
+    setPomTime(getSecondsForMode("work"));
+  }
+  pomoInterval = setInterval(tickPom, 1000);
+  state.pomo.running = true;
+  save(STATE_KEYS.POMO, state.pomo);
+}
+
+function pausePom() {
+  if (pomoInterval) {
+    clearInterval(pomoInterval);
+    pomoInterval = null;
+    state.pomo.running = false;
+    save(STATE_KEYS.POMO, state.pomo);
+  }
+}
+
+function resetPom() {
+  pausePom();
+  pomoMode = "work";
+  setPomTime(getSecondsForMode("work"));
+  state.pomo.running = false;
+  save(STATE_KEYS.POMO, state.pomo);
+}
+
+function startBreak(type) {
+  pausePom();
+  pomoMode = type === "long" ? "long" : "short";
+  setPomTime(getSecondsForMode(pomoMode));
+  // auto start if enabled
+  if (state.settings.autoStart) startPom();
+}
+
+/* on complete behavior */
+function onPomComplete() {
+  // record history entry
+  const minutes = Math.round(getSecondsForMode(pomoMode) / 60);
+  const entry = {
+    id: generateId("ph"),
+    date: new Date().toISOString().slice(0,10),
+    time: new Date().toLocaleTimeString(),
+    type: pomoMode === "work" ? "work" : "break",
+    minutes: pomoMode === "work" ? (getSecondsForMode(pomoMode) / 60) : 0
+  };
+  // push only if it's a work session
+  if (pomoMode === "work") {
+    state.pomoHistory.unshift(entry);
+    // keep history to last 200
+    if (state.pomoHistory.length > 200) state.pomoHistory.pop();
+    save(STATE_KEYS.POMO_HISTORY, state.pomoHistory);
+    renderPomHistory();
+  }
+
+  // notification & audio (simplified)
+  try {
+    if (Notification && Notification.permission === "granted") {
+      new Notification("Pomodoro", { body: "Session ended — good job!" });
+    }
+  } catch (e) { /* ignore */ }
+
+  // small alert fallback
+  alert("Pomodoro complete!");
+
+  // auto-start next depending on settings
+  if (state.settings.autoStart) {
+    // if finished work -> start short break automatically
+    if (pomoMode === "work") {
+      pomoMode = "short";
+      setPomTime(getSecondsForMode("short"));
+      startPom();
+    } else {
+      // if finished break -> start work
+      pomoMode = "work";
+      setPomTime(getSecondsForMode("work"));
+      startPom();
+    }
+  } else {
+    // stop; set to default work time
+    pomoMode = "work";
+    setPomTime(getSecondsForMode("work"));
+  }
+
+  updateStats();
+}
+
+/* render history UI */
+function renderPomHistory() {
+  if (!pomHistoryEl) return;
+  pomHistoryEl.innerHTML = "";
+  state.pomoHistory.slice(0, 12).forEach(h => {
+    const li = document.createElement("li");
+    li.textContent = `${h.date} • ${h.time} • ${h.type} • ${h.minutes || 0}m`;
+    pomHistoryEl.appendChild(li);
+  });
+}
+
+/* ---------------------------
+   SETTINGS MODAL
+   --------------------------- */
+function openSettings() {
+  if (!settingsModal) return;
+  settingsModal.setAttribute("aria-hidden", "false");
+}
+function closeSettings() {
+  if (!settingsModal) return;
+  settingsModal.setAttribute("aria-hidden", "true");
+}
+function initSettings() {
+  // fill settings inputs
+  if (defaultPomInput) defaultPomInput.value = state.settings.defaultPom || 25;
+  if (autoStartInput) autoStartInput.checked = !!state.settings.autoStart;
+
+  // open modal with new-task button
+  if (newTaskBtn) {
+    newTaskBtn.addEventListener("click", () => {
+      // focus task input
+      if (taskInput) taskInput.focus();
+    });
+  }
+
+  // modal close buttons
+  modalCloseBtns.forEach(b => b.addEventListener("click", closeSettings));
+
+  // save settings
+  if (settingsSaveBtn) {
+    settingsSaveBtn.addEventListener("click", () => {
+      const d = parseInt(defaultPomInput.value, 10) || 25;
+      const a = !!autoStartInput.checked;
+      state.settings.defaultPom = Math.max(5, Math.min(60, d));
+      state.settings.autoStart = a;
+      save(STATE_KEYS.SETTINGS, state.settings);
+      // apply immediately to pomo
+      setPomTime(state.settings.defaultPom * 60);
+      toast("Settings saved");
+      closeSettings();
+    });
+  }
+}
+
+/* ---------------------------
+   SEARCH
+   --------------------------- */
+function initSearch() {
+  if (!searchInput) return;
+  searchInput.addEventListener("input", (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    // naive search over tasks & notes
+    if (!q) {
+      renderTasks();
+      return;
+    }
+    const results = state.tasks.filter(t => t.title.toLowerCase().includes(q) || (t.project || "").toLowerCase().includes(q));
+    // render results
+    if (!taskListEl) return;
+    taskListEl.innerHTML = "";
+    results.forEach(r => taskListEl.appendChild(createTaskElement(r)));
+  });
+}
+
+/* ---------------------------
    QUICK ACTIONS
---------------------------------*/
-.quick-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; }
-.quick-btn { padding: 12px; border-radius: 10px; border: none; cursor: pointer; background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); font-weight:700; }
-
-/* ------------------------------
-   MINI CARD
---------------------------------*/
-.mini .sparkline { height: 56px; border-radius: 8px; background: linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); }
-
-/* ------------------------------
-   FOOTER
---------------------------------*/
-.footer { margin-top: 8px; color: var(--muted); font-size: 0.9rem; text-align: center; }
-
-/* ------------------------------
-   MODAL (settings)
---------------------------------*/
-.modal {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: rgba(3,6,10,0.5);
-  z-index: 1200;
-}
-.modal[aria-hidden="false"] { display: flex; }
-.modal-panel {
-  width: min(720px, 92%);
-  border-radius: 12px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  padding: 18px;
-  border: 1px solid rgba(255,255,255,0.03);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-}
-.modal-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; }
-.modal-close { background: transparent; border: none; font-size: 1.1rem; cursor: pointer; }
-
-/* controls inside modal */
-.modal-body label { display:block; margin-bottom:10px; color:var(--muted); font-weight:600; }
-.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
-
-/* ------------------------------
-   SMALL HELPERS / UTILITIES
---------------------------------*/
-.kv { display:flex; justify-content:space-between; align-items:center; gap: 8px; }
-.center { display:grid; place-items:center; }
-.hidden { display:none !important; }
-
-/* ------------------------------
-   RESPONSIVE
---------------------------------*/
-@media (max-width: 1100px) {
-  .app { grid-template-columns: 1fr; padding: 12px; }
-  .sidebar { position: relative; height: auto; order: 2; margin-top: 12px; }
-  .content-grid { grid-template-columns: 1fr; }
-  .content-grid .col-right { order: 2; }
-  .content-grid .col-left { order: 1; }
-  .search input[type="search"] { min-width: 120px; }
+   --------------------------- */
+function initQuickButtons() {
+  quickButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const txt = btn.textContent.trim().toLowerCase();
+      if (txt.includes("new task")) {
+        if (taskInput) { taskInput.focus(); }
+      } else if (txt.includes("start focus")) {
+        startPom();
+      } else if (txt.includes("save note")) {
+        saveNotes();
+      } else if (txt.includes("export")) {
+        exportData();
+      }
+    });
+  });
 }
 
-@media (max-width: 680px) {
-  .circle-timer { width: 180px; height: 180px; }
-  .circle-svg { width: 180px; height: 180px; }
-  .time { font-size: 1.6rem; }
-  .stats-grid { grid-template-columns: 1fr 1fr; }
-  .task-list { max-height: 260px; }
+function exportData() {
+  const payload = {
+    tasks: state.tasks,
+    notes: state.notes,
+    pomoHistory: state.pomoHistory,
+    settings: state.settings
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `proddash_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
-/* ------------------------------
-   ACCESSIBILITY FOCUS + KEYBOARD
---------------------------------*/
-button:focus, input:focus, select:focus, textarea:focus {
-  outline: 3px solid rgba(255,255,255,0.03);
-  box-shadow: 0 8px 30px rgba(0,0,0,0.35);
-  transition: box-shadow 220ms var(--ease);
+/* ---------------------------
+   TOAST (tiny UX)
+   --------------------------- */
+let toastTimeout = null;
+function toast(msg) {
+  let t = qs("#pd-toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "pd-toast";
+    t.style.position = "fixed";
+    t.style.right = "18px";
+    t.style.bottom = "18px";
+    t.style.padding = "10px 14px";
+    t.style.borderRadius = "8px";
+    t.style.background = "linear-gradient(90deg, rgba(0,0,0,0.6), rgba(0,0,0,0.4))";
+    t.style.color = "white";
+    t.style.boxShadow = "0 8px 24px rgba(0,0,0,0.6)";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = "1";
+  if (toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => {
+    t.style.opacity = "0";
+  }, 1800);
 }
 
-/* ------------------------------
-   EXTRA: gradient stroke for circle (SVG)
---------------------------------*/
-svg defs { /* generic - JS can inject gradient id if needed */ }
+/* ---------------------------
+   BOOT & INIT
+   --------------------------- */
+function initApp() {
+  // set footer year
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  // apply saved theme
+  const savedTheme = load(STATE_KEYS.THEME, state.theme);
+  applyTheme(savedTheme || state.theme);
+
+  // theme select change
+  if (themeSelect) {
+    themeSelect.value = (savedTheme && savedTheme.replace("theme-","")) || "neon";
+    themeSelect.addEventListener("change", (e) => {
+      applyTheme(selectToThemeClass(e.target.value));
+    });
+  }
+
+  // tasks UI
+  renderTasks();
+  updateStats();
+
+  // hook add task
+  if (addTaskBtn) addTaskBtn.addEventListener("click", addTaskFromInput);
+  if (taskInput) taskInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") addTaskFromInput();
+  });
+
+  // filter buttons
+  filters.forEach(f => f.addEventListener("click", () => {
+    const filter = f.dataset.filter;
+    renderTasks(filter || "all");
+  }));
+
+  // save notes
+  if (saveNoteBtn) saveNoteBtn.addEventListener("click", saveNotes);
+  loadNotesToUI();
+
+  // settings
+  initSettings();
+
+  // nav
+  initNav();
+
+  // search
+  initSearch();
+
+  // quick actions
+  initQuickButtons();
+
+  // pomodoro
+  initPomodoro();
+
+  // task count update initially
+  renderTasks();
+
+  // attach export via GitHub button (if present)
+  const gh = qs("#github-btn");
+  if (gh) {
+    gh.addEventListener("click", () => {
+      window.open("https://github.com/VoidAnand/Productive-Dashboard-jk-", "_blank");
+    });
+  }
+
+  // signout placeholder
+  const signout = qs("#signout");
+  if (signout) signout.addEventListener("click", () => toast("Signed out (placeholder)"));
+
+  // profile btn
+  const profileBtn = qs("#profile-btn");
+  if (profileBtn) profileBtn.addEventListener("click", () => toast("Profile menu (placeholder)"));
+
+  // allow modal open via keyboard 's' for settings (convenience)
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      openSettings();
+    }
+  });
+
+  // persist tasks on unload (redundant but safe)
+  window.addEventListener("beforeunload", () => {
+    save(STATE_KEYS.TASKS, state.tasks);
+    save(STATE_KEYS.NOTES, state.notes);
+    save(STATE_KEYS.POMO_HISTORY, state.pomoHistory);
+    save(STATE_KEYS.SETTINGS, state.settings);
+    save(STATE_KEYS.THEME, state.theme);
+  });
+}
+
+/* ---------------------------
+   Initialize on DOM ready
+   --------------------------- */
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApp);
+} else {
+  initApp();
+}
