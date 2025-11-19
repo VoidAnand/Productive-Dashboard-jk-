@@ -674,7 +674,7 @@ function initApp() {
   const gh = qs("#github-btn");
   if (gh) {
     gh.addEventListener("click", () => {
-      window.open("https://github.com/yourusername/productivity-dashboard", "_blank");
+      window.open("https://github.com/VoidAnand/Productive-Dashboard-jk-", "_blank");
     });
   }
 
