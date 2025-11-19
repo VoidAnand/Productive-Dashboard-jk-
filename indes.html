@@ -1,47 +1,289 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Productivity Dashboard</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Productivity Dashboard — Anand</title>
+
+  <!-- Fonts (you can keep or change in CSS) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Main stylesheet -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Meta -->
+  <meta name="description" content="Dark-glow productivity dashboard with tasks, pomodoro, notes and themes.">
 </head>
-<body>
+<body id="body">
 
-    <div class="container">
+  <!-- ===========================
+       APP WRAPPER
+       =========================== -->
+  <div class="app">
 
-        <h1 class="glow">Productivity Dashboard</h1>
+    <!-- =============
+         SIDEBAR
+         ============= -->
+    <aside class="sidebar" aria-label="Primary Navigation">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <!-- simple SVG mark -->
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="2" width="20" height="20" rx="6" fill="currentColor" opacity="0.12"/>
+            <path d="M7 12h10M7 8h10M7 16h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>ProdDash</h1>
+          <p class="muted">by Anand</p>
+        </div>
+      </div>
 
-        <!-- To-Do List -->
-        <div class="card">
-            <h2>To-Do List</h2>
-            <div class="todo-input">
-                <input type="text" id="todoText" placeholder="Add a task...">
-                <button onclick="addTodo()">Add</button>
+      <nav class="nav">
+        <ul>
+          <li class="nav-item active" data-target="dashboard"><button>Dashboard</button></li>
+          <li class="nav-item" data-target="tasks"><button>Tasks</button></li>
+          <li class="nav-item" data-target="pomodoro"><button>Pomodoro</button></li>
+          <li class="nav-item" data-target="notes"><button>Notes</button></li>
+          <li class="nav-item" data-target="stats"><button>Stats</button></li>
+          <li class="nav-item" data-target="settings"><button>Settings</button></li>
+        </ul>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="github-btn" class="ghost">View on GitHub</button>
+        <button id="signout" class="ghost">Sign out</button>
+      </div>
+    </aside>
+
+    <!-- =============
+         MAIN AREA
+         ============= -->
+    <main class="main" role="main">
+
+      <!-- ---------- TOPBAR ---------- -->
+      <header class="topbar">
+        <div class="top-left">
+          <button id="sidebar-toggle" class="icon-btn" aria-label="Toggle sidebar">☰</button>
+          <div class="search">
+            <input id="search" type="search" placeholder="Search tasks, notes, settings..." aria-label="Search" />
+          </div>
+        </div>
+
+        <div class="top-right">
+          <div class="theme-switch-dropdown">
+            <label for="theme-select" class="sr-only">Choose theme</label>
+            <select id="theme-select" aria-label="Theme selector">
+              <option value="neon">Neon</option>
+              <option value="purple">Purple</option>
+              <option value="red">Red</option>
+              <option value="blue">Blue</option>
+              <option value="green">Green</option>
+              <option value="light">Light</option>
+            </select>
+          </div>
+
+          <div class="user">
+            <button id="profile-btn" class="avatar" aria-label="Open profile menu">
+              <span class="avatar-initial">R</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- ---------- GRID CONTENT ---------- -->
+      <section class="content-grid">
+
+        <!-- ======= LEFT COLUMN: MAIN WIDGETS ======= -->
+        <div class="col col-left">
+
+          <!-- ----- DASHBOARD CARD: QUICK STATS ----- -->
+          <section class="card stats" id="stats">
+            <div class="card-head">
+              <h2>Quick Stats</h2>
+              <div class="card-actions">
+                <button class="tiny">Today</button>
+                <button class="tiny">Week</button>
+              </div>
             </div>
-            <ul id="todoList"></ul>
-        </div>
 
-        <!-- Pomodoro Timer -->
-        <div class="card">
-            <h2>Pomodoro Timer</h2>
-            <div class="timer" id="timer">25:00</div>
-            <div class="timer-buttons">
-                <button onclick="startTimer()">Start</button>
-                <button onclick="pauseTimer()">Pause</button>
-                <button onclick="resetTimer()">Reset</button>
+            <div class="stats-grid">
+              <div class="stat">
+                <p class="label">Tasks</p>
+                <h3 id="stat-tasks">0</h3>
+                <p class="muted small">open • completed</p>
+              </div>
+
+              <div class="stat">
+                <p class="label">Focus time</p>
+                <h3 id="stat-focus">0m</h3>
+                <p class="muted small">today</p>
+              </div>
+
+              <div class="stat">
+                <p class="label">Pomodoros</p>
+                <h3 id="stat-pomos">0</h3>
+                <p class="muted small">completed</p>
+              </div>
+
+              <div class="stat">
+                <p class="label">Notes</p>
+                <h3 id="stat-notes">0</h3>
+                <p class="muted small">saved</p>
+              </div>
             </div>
-        </div>
+          </section>
 
-        <!-- Notes -->
-        <div class="card">
-            <h2>Notes</h2>
-            <textarea id="notes" placeholder="Write your notes here..."></textarea>
-            <button onclick="saveNotes()">Save Notes</button>
-        </div>
+          <!-- ----- TODO / TASKS ----- -->
+          <section class="card tasks" id="tasks">
+            <div class="card-head">
+              <h2>Tasks</h2>
+              <div class="card-actions">
+                <button id="new-task-btn" class="outline">+ New</button>
+              </div>
+            </div>
 
+            <div class="task-input">
+              <input id="taskText" type="text" placeholder="Add a new task (press Enter)"/>
+              <select id="task-project" aria-label="Project filter">
+                <option value="inbox">Inbox</option>
+                <option value="work">Work</option>
+                <option value="personal">Personal</option>
+              </select>
+              <button id="addTask" class="primary">Add</button>
+            </div>
+
+            <ul id="taskList" class="task-list" aria-live="polite"></ul>
+
+            <div class="task-footer muted small">
+              <span id="task-count">0 tasks</span>
+              <div class="task-filters">
+                <button class="tiny" data-filter="all">All</button>
+                <button class="tiny" data-filter="active">Active</button>
+                <button class="tiny" data-filter="done">Done</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- ----- NOTES ----- -->
+          <section class="card notes" id="notes">
+            <div class="card-head">
+              <h2>Notes</h2>
+              <div class="card-actions">
+                <button id="saveNote" class="tiny">Save</button>
+              </div>
+            </div>
+
+            <textarea id="noteText" placeholder="Write a note — markdown supported"></textarea>
+          </section>
+
+        </div> <!-- /col-left -->
+
+        <!-- ======= RIGHT COLUMN: TIMERS & HISTORY ======= -->
+        <div class="col col-right">
+
+          <!-- ----- POMODORO ----- -->
+          <section class="card pomodoro" id="pomodoro">
+            <div class="card-head">
+              <h2>Pomodoro</h2>
+              <div class="card-actions">
+                <button id="shortBreak" class="tiny">Short</button>
+                <button id="longBreak" class="tiny">Long</button>
+              </div>
+            </div>
+
+            <div class="pomodoro-body">
+              <!-- Circular visual placeholder (styled via CSS) -->
+              <div class="circle-timer" role="img" aria-label="Pomodoro timer">
+                <svg class="circle-svg" viewBox="0 0 120 120">
+                  <circle class="circle-bg" cx="60" cy="60" r="52" />
+                  <circle class="circle-progress" cx="60" cy="60" r="52" />
+                </svg>
+                <div class="time-label">
+                  <div id="pomodoro-time" class="time">25:00</div>
+                  <div class="time-controls">
+                    <button id="startPom" class="primary">Start</button>
+                    <button id="pausePom" class="outline">Pause</button>
+                    <button id="resetPom" class="tiny">Reset</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pom-history muted small">
+              <strong>History</strong>
+              <ul id="pomHistory">
+                <!-- filled by JS -->
+              </ul>
+            </div>
+          </section>
+
+          <!-- ----- QUICK ADD / SHORTCUTS ----- -->
+          <section class="card quick" id="quick">
+            <h2>Quick Actions</h2>
+            <div class="quick-grid">
+              <button class="quick-btn">+ New Task</button>
+              <button class="quick-btn">Start Focus</button>
+              <button class="quick-btn">Save Note</button>
+              <button class="quick-btn">Export Data</button>
+            </div>
+          </section>
+
+          <!-- ----- METRICS or LIGHT WIDGET ----- -->
+          <section class="card mini" id="mini">
+            <h3>Today Snapshot</h3>
+            <p class="muted">Focus score: <strong id="focus-score">0</strong></p>
+            <div class="sparkline" aria-hidden="true">
+              <!-- sparkline SVG or canvas injected by JS or CSS -->
+            </div>
+          </section>
+
+        </div> <!-- /col-right -->
+
+      </section> <!-- /content-grid -->
+
+      <!-- =============
+           FOOTER
+           ============= -->
+      <footer class="footer">
+        <p class="muted small">Made with ❤️ by Anand — <span id="year"></span></p>
+      </footer>
+
+    </main> <!-- /main -->
+
+  </div> <!-- /app -->
+
+  <!-- ===========================
+       SETTINGS / MODAL SCAFFOLD
+       =========================== -->
+  <div class="modal" id="settingsModal" role="dialog" aria-hidden="true" aria-labelledby="settingsTitle">
+    <div class="modal-panel">
+      <header class="modal-head">
+        <h3 id="settingsTitle">Settings</h3>
+        <button class="modal-close" aria-label="Close settings">✖</button>
+      </header>
+
+      <div class="modal-body">
+        <label>Default Pomodoro Minutes
+          <input id="defaultPom" type="number" min="5" max="60" value="25">
+        </label>
+
+        <label>Auto-start next session
+          <input id="autoStart" type="checkbox" checked>
+        </label>
+
+        <div class="modal-actions">
+          <button id="saveSettings" class="primary">Save</button>
+          <button class="outline modal-close">Cancel</button>
+        </div>
+      </div>
     </div>
+  </div>
 
-<script src="script.js"></script>
+  <!-- ===========================
+       SCRIPTS
+       =========================== -->
+  <script src="script.js" defer></script>
+
 </body>
 </html>
