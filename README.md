@@ -47,11 +47,6 @@ It works directly in any browser (Chrome, Edge, Firefox, etc).
 
 ---
 
-## 📸 Screenshots  
-*(Add these after your site is live — I can generate them if you want)*
-
-
----
 
 ## 🔧 Technologies Used
 - **HTML**
@@ -61,7 +56,7 @@ It works directly in any browser (Chrome, Edge, Firefox, etc).
 ---
 
 ## 🧑‍💻 Author
-Built by **Raien** 👑  
+Built by **ANAND** 👑  
 Clean, aesthetic, and beginner-friendly productivity tool.
 
 ---
