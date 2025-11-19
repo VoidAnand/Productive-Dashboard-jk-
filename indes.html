@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productivity Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+
+        <h1 class="glow">Productivity Dashboard</h1>
+
+        <!-- To-Do List -->
+        <div class="card">
+            <h2>To-Do List</h2>
+            <div class="todo-input">
+                <input type="text" id="todoText" placeholder="Add a task...">
+                <button onclick="addTodo()">Add</button>
+            </div>
+            <ul id="todoList"></ul>
+        </div>
+
+        <!-- Pomodoro Timer -->
+        <div class="card">
+            <h2>Pomodoro Timer</h2>
+            <div class="timer" id="timer">25:00</div>
+            <div class="timer-buttons">
+                <button onclick="startTimer()">Start</button>
+                <button onclick="pauseTimer()">Pause</button>
+                <button onclick="resetTimer()">Reset</button>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="card">
+            <h2>Notes</h2>
+            <textarea id="notes" placeholder="Write your notes here..."></textarea>
+            <button onclick="saveNotes()">Save Notes</button>
+        </div>
+
+    </div>
+
+<script src="script.js"></script>
+</body>
+</html>
