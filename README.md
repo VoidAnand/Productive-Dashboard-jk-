@@ -24,11 +24,6 @@ Fully responsive and runs entirely in the browser.
 
 ---
 
-## 🖥️ Live Demo
-*(If you enabled GitHub Pages)*  
-👉 **https://yourusername.github.io/productivity-dashboard/**
-
----
 
 ## 📂 Project Structure
 
