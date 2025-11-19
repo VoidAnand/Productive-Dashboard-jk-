@@ -1,114 +1,520 @@
-/* Basic Reset */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: "Poppins", sans-serif;
+/* ======================================================
+   Productivy Dashboard - style.css
+   - Theme-ready variables
+   - Layout: sidebar + main
+   - Cards, Buttons, Inputs, Modal, Pomodoro SVG
+   - Responsive rules
+   ====================================================== */
+
+/* ------------------------------
+   DEFAULT THEME VARIABLES
+   (neon / default)
+--------------------------------*/
+:root {
+  --bg-900: #05060a;
+  --bg-800: #0b1116;
+  --card-bg: rgba(255,255,255,0.03);
+  --glass-border: rgba(0, 255, 255, 0.07);
+  --muted: #a9b0b8;
+  --text: #e7eef6;
+  --accent-1: #00eaff; /* primary gradient start */
+  --accent-2: #00ffaa; /* primary gradient end */
+  --accent-strong: #00d6a8;
+  --accent-shadow: 0 8px 40px rgba(0,230,255,0.06);
+  --card-radius: 14px;
+  --glass-blur: 8px;
+  --glass-border-strong: 1px solid rgba(0,255,255,0.08);
+  --success: #6ee7b7;
+  --danger: #ff6f91;
+  --soft: rgba(255,255,255,0.02);
+  --tiny: 0.85rem;
+  --ease: cubic-bezier(.22,.9,.11,1);
 }
 
+/* ------------------------------
+   THEME PRESETS
+   Add one of these classes to <body>:
+   .theme-neon, .theme-purple, .theme-red, .theme-blue, .theme-green, .theme-light
+--------------------------------*/
+body.theme-neon { /* default, keep :root values */ }
+
+body.theme-purple {
+  --accent-1: #d66bff;
+  --accent-2: #9b4dff;
+  --accent-strong: #b46bff;
+  --glass-border: rgba(180, 0, 255, 0.08);
+  --accent-shadow: 0 8px 40px rgba(150,80,255,0.06);
+}
+
+body.theme-red {
+  --accent-1: #ff4d6d;
+  --accent-2: #ff1e4d;
+  --accent-strong: #ff2e6b;
+  --glass-border: rgba(255, 10, 50, 0.08);
+  --accent-shadow: 0 8px 40px rgba(255,40,80,0.06);
+}
+
+body.theme-blue {
+  --accent-1: #4dc4ff;
+  --accent-2: #009dff;
+  --accent-strong: #00a8ff;
+  --glass-border: rgba(0,150,255,0.08);
+  --accent-shadow: 0 8px 40px rgba(0,150,255,0.06);
+}
+
+body.theme-green {
+  --accent-1: #66ff99;
+  --accent-2: #00ff66;
+  --accent-strong: #2aff85;
+  --glass-border: rgba(0,255,120,0.08);
+  --accent-shadow: 0 8px 40px rgba(0,255,140,0.05);
+}
+
+body.theme-light {
+  --bg-900: #f6f7fb;
+  --bg-800: #eef2f8;
+  --card-bg: rgba(8,10,12,0.03);
+  --glass-border: rgba(0,0,0,0.06);
+  --muted: #475569;
+  --text: #0f1724;
+  --accent-1: #ff4f8b;
+  --accent-2: #ff8aa1;
+  --accent-strong: #ff708f;
+  --accent-shadow: 0 8px 40px rgba(255,80,120,0.06);
+  --soft: rgba(0,0,0,0.03);
+}
+
+/* ------------------------------
+   BASE / TYPOGRAPHY
+--------------------------------*/
+* { box-sizing: border-box; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+html, body { height: 100%; }
 body {
-    background: #0d0d0d;
-    color: white;
-    display: flex;
-    justify-content: center;
-    padding: 20px;
+  margin: 0;
+  min-height: 100%;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: radial-gradient(1200px 600px at 10% 10%, rgba(15,25,40,0.25), transparent),
+              linear-gradient(180deg, var(--bg-900) 0%, var(--bg-800) 100%);
+  color: var(--text);
+  transition: background 400ms var(--ease), color 300ms var(--ease);
+  -webkit-font-smoothing: antialiased;
+  padding: 18px;
 }
 
-/* Main Container */
-.container {
-    width: 100%;
-    max-width: 600px;
+/* small helpers */
+.muted { color: var(--muted); }
+.small { font-size: 0.85rem; }
+.tiny { font-size: var(--tiny); }
+
+/* layout root */
+.app {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+  max-width: 1200px;
+  margin: 8px auto;
+  align-items: start;
 }
 
-/* Glowing Header */
-.glow {
-    text-align: center;
-    margin-bottom: 25px;
-    font-size: 2.5rem;
-    color: #00eaff;
-    text-shadow: 0 0 10px #00eaff, 0 0 30px #00eaff;
+/* ------------------------------
+   SIDEBAR
+--------------------------------*/
+.sidebar {
+  position: sticky;
+  top: 20px;
+  height: calc(100vh - 40px);
+  padding: 18px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: var(--glass-border-strong);
+  box-shadow: var(--accent-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
-/* Card UI */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+  color: white;
+}
+
+.brand-text h1 {
+  font-size: 1.05rem;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+.brand-text .muted { font-size: 0.8rem; margin-top: 2px; }
+
+/* nav */
+.nav {
+  flex: 1;
+}
+.nav ul { list-style: none; padding: 0; margin: 0; display:flex; flex-direction: column; gap:8px; }
+.nav-item button {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  cursor: pointer;
+  transition: transform 220ms var(--ease), background 220ms var(--ease);
+  font-weight: 600;
+}
+.nav-item button:hover { transform: translateX(6px); opacity: 0.95; }
+.nav-item.active button {
+  background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border-left: 4px solid var(--accent-2);
+}
+
+/* sidebar footer */
+.sidebar-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+.ghost {
+  background: transparent;
+  border: 1px dashed rgba(255,255,255,0.04);
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* ------------------------------
+   MAIN / TOPBAR
+--------------------------------*/
+.main {
+  min-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.top-left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.icon-btn {
+  background: rgba(255,255,255,0.02);
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.search input[type="search"] {
+  min-width: 280px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.03);
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
+  outline: none;
+}
+.search input::placeholder { color: var(--muted); }
+
+/* top-right */
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-switch-dropdown select {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.04);
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* avatar */
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,0.03);
+  cursor: pointer;
+}
+.avatar-initial {
+  font-weight: 700;
+  color: var(--accent-1);
+}
+
+/* ------------------------------
+   CONTENT GRID
+--------------------------------*/
+.content-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* left and right column wrappers */
+.col { display: flex; flex-direction: column; gap: 16px; }
+.col-left {}
+.col-right {}
+
+/* ------------------------------
+   CARD BASE
+--------------------------------*/
 .card {
-    background: #1a1a1a;
-    padding: 20px;
-    margin-bottom: 25px;
-    border-radius: 15px;
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  padding: 18px;
+  border: 1px solid rgba(255,255,255,0.03);
+  box-shadow: 0 8px 30px rgba(2,6,23,0.5);
+  transition: transform 260ms var(--ease), box-shadow 260ms var(--ease);
 }
 
-/* Buttons */
-button {
-    padding: 10px 20px;
-    border: none;
-    background: #00eaff;
-    color: black;
-    font-weight: bold;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: 0.2s;
-    box-shadow: 0 0 10px #00eaff;
+.card:hover { transform: translateY(-6px); box-shadow: var(--accent-shadow); }
+
+.card h2, .card h3 { margin: 0 0 8px 0; font-weight: 700; }
+.card .card-head { display:flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+.card .card-actions { display:flex; gap: 8px; align-items:center; }
+
+/* tiny button */
+.tiny {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.02);
+  cursor: pointer;
+  font-weight: 600;
 }
 
-button:hover {
-    background: #00bcd4;
-    box-shadow: 0 0 15px #00eaff;
+/* primary & outline buttons */
+button.primary {
+  background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  color: #061018;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  font-weight: 700;
+}
+button.outline {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.04);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 10px;
 }
 
-/* To-do List */
-.todo-input {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
+/* ------------------------------
+   STATS GRID
+--------------------------------*/
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.stat { padding: 14px; border-radius: 12px; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); }
+.stat .label { color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+.stat h3 { margin: 0; font-size: 1.3rem; }
+
+/* ------------------------------
+   TASKS
+--------------------------------*/
+.task-input {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.task-input input[type="text"], .task-input select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.03);
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
+  outline: none;
+}
+.task-input select { min-width: 120px; }
+
+.task-list { list-style: none; padding: 0; margin: 8px 0 0 0; display: flex; flex-direction: column; gap: 8px; max-height: 360px; overflow: auto; }
+.task-item {
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+  border-left: 4px solid rgba(255,255,255,0.02);
+  transition: transform 200ms var(--ease), background 200ms var(--ease);
+}
+.task-item .title { flex:1; font-weight:600; }
+.task-item .meta { color: var(--muted); font-size: 0.85rem; }
+
+.task-item.todo { border-left-color: var(--accent-2); }
+.task-item.done { opacity: 0.5; text-decoration: line-through; }
+
+/* ------------------------------
+   NOTES
+--------------------------------*/
+.notes textarea {
+  width: 100%;
+  min-height: 160px;
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255,255,255,0.03);
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
+  resize: vertical;
+  outline: none;
 }
 
-.todo-input input {
-    flex: 1;
-    padding: 10px;
-    border-radius: 8px;
-    border: none;
-    background: #111;
-    color: white;
+/* ------------------------------
+   POMODORO: circular timer UI
+--------------------------------*/
+.pomodoro .pomodoro-body { display:flex; justify-content:center; align-items:center; padding: 6px 0 14px 0; }
+.circle-timer {
+  width: 220px;
+  height: 220px;
+  display:grid;
+  place-items:center;
+  position: relative;
+}
+.circle-svg { width: 220px; height: 220px; transform: rotate(-90deg); }
+.circle-bg { fill: none; stroke: rgba(255,255,255,0.04); stroke-width: 10; }
+.circle-progress {
+  fill: none;
+  stroke: url(#grad); /* fallback - JS may set stroke-dashoffset */
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 400ms linear, stroke 300ms var(--ease);
+  filter: drop-shadow(0 6px 18px rgba(0,0,0,0.6));
 }
 
-#todoList li {
-    background: #111;
-    padding: 10px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+/* time label & controls in center */
+.time-label { position: absolute; display:flex; flex-direction: column; align-items:center; gap: 10px; }
+.time { font-weight: 800; font-size: 2.4rem; letter-spacing: 1px; color: var(--text); text-shadow: 0 6px 30px rgba(0,0,0,0.6); }
+.time-controls { display:flex; gap:8px; }
+
+/* small controls */
+.time-controls .primary { padding: 8px 12px; border-radius: 10px; font-weight:700; }
+.time-controls .outline { padding: 8px 10px; border-radius: 10px; }
+
+/* Pomodoro history */
+.pom-history { margin-top: 12px; max-height: 110px; overflow:auto; }
+.pom-history ul { list-style:none; padding:0; margin:8px 0 0 0; display:flex; flex-direction: column; gap:6px; }
+.pom-history li { padding:8px; background: rgba(255,255,255,0.01); border-radius: 8px; font-size: 0.9rem; color: var(--muted); }
+
+/* ------------------------------
+   QUICK ACTIONS
+--------------------------------*/
+.quick-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:10px; }
+.quick-btn { padding: 12px; border-radius: 10px; border: none; cursor: pointer; background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); font-weight:700; }
+
+/* ------------------------------
+   MINI CARD
+--------------------------------*/
+.mini .sparkline { height: 56px; border-radius: 8px; background: linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00)); }
+
+/* ------------------------------
+   FOOTER
+--------------------------------*/
+.footer { margin-top: 8px; color: var(--muted); font-size: 0.9rem; text-align: center; }
+
+/* ------------------------------
+   MODAL (settings)
+--------------------------------*/
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3,6,10,0.5);
+  z-index: 1200;
+}
+.modal[aria-hidden="false"] { display: flex; }
+.modal-panel {
+  width: min(720px, 92%);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  padding: 18px;
+  border: 1px solid rgba(255,255,255,0.03);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.modal-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; }
+.modal-close { background: transparent; border: none; font-size: 1.1rem; cursor: pointer; }
+
+/* controls inside modal */
+.modal-body label { display:block; margin-bottom:10px; color:var(--muted); font-weight:600; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+
+/* ------------------------------
+   SMALL HELPERS / UTILITIES
+--------------------------------*/
+.kv { display:flex; justify-content:space-between; align-items:center; gap: 8px; }
+.center { display:grid; place-items:center; }
+.hidden { display:none !important; }
+
+/* ------------------------------
+   RESPONSIVE
+--------------------------------*/
+@media (max-width: 1100px) {
+  .app { grid-template-columns: 1fr; padding: 12px; }
+  .sidebar { position: relative; height: auto; order: 2; margin-top: 12px; }
+  .content-grid { grid-template-columns: 1fr; }
+  .content-grid .col-right { order: 2; }
+  .content-grid .col-left { order: 1; }
+  .search input[type="search"] { min-width: 120px; }
 }
 
-#todoList li span {
-    cursor: pointer;
-    color: #ff0066;
-    font-weight: bold;
+@media (max-width: 680px) {
+  .circle-timer { width: 180px; height: 180px; }
+  .circle-svg { width: 180px; height: 180px; }
+  .time { font-size: 1.6rem; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .task-list { max-height: 260px; }
 }
 
-/* Pomodoro Timer */
-.timer {
-    font-size: 3rem;
-    text-align: center;
-    margin: 15px 0;
-    color: #00ffaa;
-    text-shadow: 0 0 10px #00ffaa;
+/* ------------------------------
+   ACCESSIBILITY FOCUS + KEYBOARD
+--------------------------------*/
+button:focus, input:focus, select:focus, textarea:focus {
+  outline: 3px solid rgba(255,255,255,0.03);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+  transition: box-shadow 220ms var(--ease);
 }
 
-.timer-buttons {
-    display: flex;
-    justify-content: space-between;
-}
-
-/* Notes */
-textarea {
-    width: 100%;
-    height: 150px;
-    background: #111;
-    border: none;
-    border-radius: 10px;
-    padding: 10px;
-    color: white;
-}
+/* ------------------------------
+   EXTRA: gradient stroke for circle (SVG)
+--------------------------------*/
+svg defs { /* generic - JS can inject gradient id if needed */ }
