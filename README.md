@@ -2,10 +2,10 @@
 
 A modern, animated, responsive Productivity Dashboard built with HTML, CSS, and JavaScript — featuring theme switching, a real-time clock, a smart task manager, smooth animations, and a clean glowing UI.
 
-Made with ❤️ by Anand
+Made by Anand
 
-🚀 Features
-🌓 Dynamic Theme Switching
+ Features
+ Dynamic Theme Switching
 
 Light & Dark modes
 
